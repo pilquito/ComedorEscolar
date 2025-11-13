@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  cafeteria-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cafeteria-management
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Flask Configuration
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - SESSION_SECRET=${SESSION_SECRET}
+      
+      # Database Configuration (SQLite - stored in volume)
+      - DATABASE_PATH=/app/data/cafeteria.db
+      
+      # Optional: PostgreSQL configuration if you switch to PostgreSQL
+      # - DATABASE_URL=${DATABASE_URL}
+      # - PGHOST=${PGHOST}
+      # - PGPORT=${PGPORT}
+      # - PGDATABASE=${PGDATABASE}
+      # - PGUSER=${PGUSER}
+      # - PGPASSWORD=${PGPASSWORD}
+      
+      # Application Configuration
+      - TZ=Europe/Madrid
+      - LANG=es_ES.UTF-8
+      
+    volumes:
+      # Volumen persistente para la base de datos SQLite
+      - cafeteria-data:/app/data
+      # Volumen para logs (opcional)
+      - ./logs:/app/logs
+      
+    networks:
+      - cafeteria-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  cafeteria-data:
+    driver: local
+
+networks:
+  cafeteria-network:
+    driver: bridge
