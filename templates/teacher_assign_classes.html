@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asignar Clases - Gestión Cafetería</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-utensils me-2"></i>Gestión Cafetería
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-link">{{ session.get('teacher_name', 'Usuario') }}</span>
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title mb-0">
+                            <i class="fas fa-school me-2"></i>
+                            Asignar Clases a {{ teacher.nombre }} {{ teacher.apellidos }}
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-list me-2"></i>Clases Disponibles
+                                </label>
+                                <div class="form-text mb-3">
+                                    Selecciona las clases que este profesor puede gestionar. Los profesores solo verán los estudiantes de sus clases asignadas.
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-sm btn-secondary me-2" onclick="selectAll()">
+                                        <i class="fas fa-check-double"></i> Seleccionar Todas
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNone()">
+                                        <i class="fas fa-times"></i> Deseleccionar Todas
+                                    </button>
+                                </div>
+
+                                <div class="row">
+                                    {% for clase in all_classes %}
+                                        <div class="col-md-6 col-lg-4 mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       id="class_{{ clase.clase_id }}" 
+                                                       name="clase_ids" 
+                                                       value="{{ clase.clase_id }}"
+                                                       {{ 'checked' if clase.clase_id in assigned_classes else '' }}>
+                                                <label class="form-check-label" for="class_{{ clase.clase_id }}">
+                                                    <strong>{{ clase.nombre }}</strong><br>
+                                                    <small class="text-muted">ID: {{ clase.clase_id }}</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Guardar Asignaciones
+                                </button>
+                                <a href="{{ url_for('teachers') }}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                {% if assigned_classes %}
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Clases Actualmente Asignadas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for clase_id in assigned_classes %}
+                                    {% for clase in all_classes %}
+                                        {% if clase.clase_id == clase_id %}
+                                            <div class="col-auto mb-2">
+                                                <span class="badge bg-info fs-6">
+                                                    {{ clase.nombre }} ({{ clase.clase_id }})
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('input[name="clase_ids"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        }
+        
+        function selectNone() {
+            const checkboxes = document.querySelectorAll('input[name="clase_ids"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        }
+    </script>
+</body>
+</html>
