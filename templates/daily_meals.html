@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Comensales del Día - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('index') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Comensales del Día</li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6">
+                <i class="fas fa-calendar-day me-2"></i>
+                Comensales del {{ meal_date|spanish_date }}
+            </h1>
+            <p class="lead text-muted">
+                Registro diario de alumnos que comen en el comedor
+            </p>
+        </div>
+    </div>
+
+    <!-- Date selector -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Cambiar Fecha</h6>
+                    <div class="input-group">
+                        <input type="date" class="form-control" id="dateSelector" value="{{ meal_date }}">
+                        <button class="btn btn-outline-primary" onclick="changeDate()">
+                            <i class="fas fa-search me-1"></i>
+                            Ver
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-utensils fa-2x text-success mb-2"></i>
+                    <h4>{{ total_fijo }}</h4>
+                    <small class="text-muted">Fijos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-week fa-2x text-info mb-2"></i>
+                    <h4>{{ total_discontinuo }}</h4>
+                    <small class="text-muted">Discontinuos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-plus-circle fa-2x text-warning mb-2"></i>
+                    <h4>{{ total_extra }}</h4>
+                    <small class="text-muted">Extras</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                    <h4>{{ total_meals }}</h4>
+                    <small class="text-muted">Total</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meals by Class -->
+    {% if meals_by_class %}
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Comensales por Clase
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('api_export_csv') }}?date={{ meal_date }}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-download me-1"></i>
+                            Exportar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% for clase_id, meals in meals_by_class.items() %}
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 d-flex justify-content-between align-items-center">
+                            <div>
+                                {{ clase_id }}
+                                {% set class_totals = meal_counts.get(clase_id, {}).get('totals', {}) %}
+                                <span class="badge bg-primary ms-2">{{ class_totals.get('total', 0) }} alumnos</span>
+                                {% if class_totals.get('confirmed', 0) > 0 %}
+                                    <span class="badge bg-success ms-1">{{ class_totals.get('confirmed', 0) }} ✓</span>
+                                {% endif %}
+                                {% if class_totals.get('absent', 0) > 0 %}
+                                    <span class="badge bg-danger ms-1">{{ class_totals.get('absent', 0) }} ✗</span>
+                                {% endif %}
+                                {% if class_totals.get('pending', 0) > 0 %}
+                                    <span class="badge bg-secondary ms-1">{{ class_totals.get('pending', 0) }} ?</span>
+                                {% endif %}
+                            </div>
+                            <div>
+                                {% set confirmation_rate = (class_totals.get('confirmed', 0) + class_totals.get('absent', 0)) / class_totals.get('total', 1) * 100 if class_totals.get('total', 0) > 0 else 0 %}
+                                {% if confirmation_rate == 100 %}
+                                    <span class="badge bg-success">Validado</span>
+                                {% elif confirmation_rate > 0 %}
+                                    <span class="badge bg-warning">{{ "%.0f"|format(confirmation_rate) }}% validado</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin validar</span>
+                                {% endif %}
+                            </div>
+                        </h6>
+                        
+                        <div class="row">
+                            {% for meal in meals %}
+                            <div class="col-md-4 col-lg-3 mb-2">
+                                <div class="card card-sm meal-card 
+                                    {% if meal.confirmed and not meal.is_absent %}border-success
+                                    {% elif meal.is_absent %}border-danger
+                                    {% else %}border-secondary{% endif %}" 
+                                    data-student-id="{{ meal.student_id }}" data-date="{{ meal_date }}">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <small class="fw-bold">{{ meal.apellidos }}, {{ meal.nombre }}</small>
+                                                <br>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge badge-sm me-1
+                                                        {% if meal.meal_type == 'FIJO' %}bg-success
+                                                        {% elif meal.meal_type == 'FIJO_DISCONTINUO' %}bg-info
+                                                        {% else %}bg-warning{% endif %}">
+                                                        {% if meal.meal_type == 'FIJO' %}F
+                                                        {% elif meal.meal_type == 'FIJO_DISCONTINUO' %}D  
+                                                        {% else %}E{% endif %}
+                                                    </span>
+                                                    <span class="confirmation-status">
+                                                        {% if meal.confirmed and not meal.is_absent %}
+                                                            <i class="fas fa-check text-success" title="Confirmado"></i>
+                                                        {% elif meal.is_absent %}
+                                                            <i class="fas fa-times text-danger" title="Ausente"></i>
+                                                        {% else %}
+                                                            <i class="fas fa-question text-secondary" title="Sin confirmar"></i>
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <small class="text-muted d-block">{{ meal.student_id }}</small>
+                                                <div class="btn-group btn-group-sm mt-1" role="group">
+                                                    <button type="button" class="btn btn-outline-success btn-confirm" 
+                                                            onclick="confirmStudent('{{ meal.student_id }}', '{{ meal_date }}')"
+                                                            title="Marcar como presente"
+                                                            {% if meal.confirmed and not meal.is_absent %}disabled{% endif %}>
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger btn-absent" 
+                                                            onclick="markAbsent('{{ meal.student_id }}', '{{ meal_date }}')"
+                                                            title="Marcar como ausente"
+                                                            {% if meal.is_absent %}disabled{% endif %}>
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-utensils fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay comensales registrados para este día</h5>
+                    <p class="text-muted">Los registros aparecerán aquí después de importar datos PARTEGEN.</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-upload me-1"></i>
+                        Importar Datos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function changeDate() {
+    const date = document.getElementById('dateSelector').value;
+    if (date) {
+        window.location.href = '{{ url_for("daily_meals", meal_date="") }}' + date;
+    }
+}
+
+// Confirm student as present
+function confirmStudent(studentId, date) {
+    const card = document.querySelector(`[data-student-id="${studentId}"]`);
+    const confirmBtn = card.querySelector('.btn-confirm');
+    const absentBtn = card.querySelector('.btn-absent');
+    const statusIcon = card.querySelector('.confirmation-status i');
+    
+    // Show loading
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    confirmBtn.disabled = true;
+    
+    fetch('/ajax/confirm_student', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `student_id=${studentId}&date=${date}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            card.className = card.className.replace(/border-\w+/, 'border-success');
+            statusIcon.className = 'fas fa-check text-success';
+            statusIcon.title = 'Confirmado';
+            confirmBtn.disabled = true;
+            absentBtn.disabled = false;
+            
+            // Show success message
+            CafeteriaApp.showToast('Alumno confirmado como presente', 'success');
+        } else {
+            CafeteriaApp.showToast('Error al confirmar: ' + (data.error || 'Error desconocido'), 'danger');
+        }
+    })
+    .catch(error => {
+        CafeteriaApp.showToast('Error de conexión: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        confirmBtn.innerHTML = '<i class="fas fa-check"></i>';
+        confirmBtn.disabled = false;
+    });
+}
+
+// Mark student as absent
+function markAbsent(studentId, date) {
+    const card = document.querySelector(`[data-student-id="${studentId}"]`);
+    const confirmBtn = card.querySelector('.btn-confirm');
+    const absentBtn = card.querySelector('.btn-absent');
+    const statusIcon = card.querySelector('.confirmation-status i');
+    
+    // Show loading
+    absentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    absentBtn.disabled = true;
+    
+    fetch('/ajax/mark_absent', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `student_id=${studentId}&date=${date}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            card.className = card.className.replace(/border-\w+/, 'border-danger');
+            statusIcon.className = 'fas fa-times text-danger';
+            statusIcon.title = 'Ausente';
+            absentBtn.disabled = true;
+            confirmBtn.disabled = false;
+            
+            // Show success message
+            CafeteriaApp.showToast('Alumno marcado como ausente', 'warning');
+        } else {
+            CafeteriaApp.showToast('Error al marcar ausencia: ' + (data.error || 'Error desconocido'), 'danger');
+        }
+    })
+    .catch(error => {
+        CafeteriaApp.showToast('Error de conexión: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        absentBtn.innerHTML = '<i class="fas fa-times"></i>';
+        absentBtn.disabled = false;
+    });
+}
+
+// Allow Enter key to change date
+document.getElementById('dateSelector').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        changeDate();
+    }
+});
+
+// Auto-refresh every 30 seconds to show updates from other users
+setInterval(function() {
+    // Only refresh if user is not currently interacting
+    if (!document.querySelector('.btn:disabled')) {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %}
