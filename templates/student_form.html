@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Crear' if action == 'create' else 'Editar' }} Estudiante - Gestión Cafetería</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-utensils me-2"></i>Gestión Cafetería
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-link">{{ session.get('teacher_name', 'Usuario') }}</span>
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-md-10 col-lg-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title mb-0">
+                            <i class="fas fa-{{ 'plus' if action == 'create' else 'edit' }} me-2"></i>
+                            {{ 'Crear Nuevo' if action == 'create' else 'Editar' }} Estudiante
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nombre" class="form-label">
+                                            <i class="fas fa-user me-2"></i>Nombre *
+                                        </label>
+                                        <input type="text" class="form-control" id="nombre" name="nombre" 
+                                               value="{{ student.nombre if student else '' }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="apellidos" class="form-label">
+                                            <i class="fas fa-user me-2"></i>Apellidos *
+                                        </label>
+                                        <input type="text" class="form-control" id="apellidos" name="apellidos" 
+                                               value="{{ student.apellidos if student else '' }}" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="clase_id" class="form-label">
+                                            <i class="fas fa-school me-2"></i>Clase *
+                                        </label>
+                                        <select class="form-select" id="clase_id" name="clase_id" required>
+                                            <option value="">Seleccionar clase...</option>
+                                            {% for clase in classes %}
+                                                <option value="{{ clase.clase_id }}" 
+                                                        {{ 'selected' if student and student.clase_id == clase.clase_id else '' }}>
+                                                    {{ clase.nombre }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="tipo_comensal" class="form-label">
+                                            <i class="fas fa-utensils me-2"></i>Tipo de Comensal
+                                        </label>
+                                        <select class="form-select" id="tipo_comensal" name="tipo_comensal" onchange="updateDaysBasedOnType()">
+                                            <option value="FIJO" {{ 'selected' if not student or student.tipo_comensal == 'FIJO' else '' }}>
+                                                FIJO - Come todos los días
+                                            </option>
+                                            <option value="FIJO_DISCONTINUO" {{ 'selected' if student and student.tipo_comensal == 'FIJO_DISCONTINUO' else '' }}>
+                                                FIJO DISCONTINUO - Come ciertos días
+                                            </option>
+                                            <option value="EXTRA" {{ 'selected' if student and student.tipo_comensal == 'EXTRA' else '' }}>
+                                                EXTRA - Ocasional
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-calendar me-2"></i>Días de la Semana
+                                </label>
+                                <div class="row">
+                                    {% set dias = [
+                                        ('LUNES', 'Lunes'),
+                                        ('MARTES', 'Martes'),
+                                        ('MIÉRCOLES', 'Miércoles'),
+                                        ('JUEVES', 'Jueves'),
+                                        ('VIERNES', 'Viernes')
+                                    ] %}
+                                    {% for dia_code, dia_name in dias %}
+                                        <div class="col-auto">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       id="dia_{{ dia_code }}" name="dias_semana" value="{{ dia_code }}"
+                                                       {{ 'checked' if not student or (student.dias_semana and dia_code in student.dias_semana) else '' }}>
+                                                <label class="form-check-label" for="dia_{{ dia_code }}">
+                                                    {{ dia_name }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            {% if action == 'edit' %}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="activo" name="activo" 
+                                                       {{ 'checked' if student.activo else '' }}>
+                                                <label class="form-check-label" for="activo">
+                                                    <i class="fas fa-check-circle me-2"></i>Activo
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="viene_hoy" name="viene_hoy" 
+                                                       {{ 'checked' if student.viene_hoy else '' }}>
+                                                <label class="form-check-label" for="viene_hoy">
+                                                    <i class="fas fa-calendar-check me-2"></i>Viene Hoy
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <label for="alergias" class="form-label">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Alergias/Observaciones
+                                </label>
+                                <textarea class="form-control" id="alergias" name="alergias" rows="3" 
+                                          placeholder="Especificar alergias alimentarias u otras observaciones...">{{ student.alergias if student and student.alergias else '' }}</textarea>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    {{ 'Crear Estudiante' if action == 'create' else 'Guardar Cambios' }}
+                                </button>
+                                <a href="{{ url_for('students') }}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function updateDaysBasedOnType() {
+            const tipoSelect = document.getElementById('tipo_comensal');
+            const selectedType = tipoSelect.value;
+            
+            // Get all day checkboxes
+            const dayCheckboxes = document.querySelectorAll('input[name="dias_semana"]');
+            
+            // Clear all first
+            dayCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Set based on type
+            if (selectedType === 'FIJO') {
+                // Mark all weekdays (Monday to Friday)
+                dayCheckboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+            } else if (selectedType === 'FIJO_DISCONTINUO') {
+                // Leave empty for manual selection
+                // User will select specific days
+            } else if (selectedType === 'EXTRA') {
+                // Leave empty - occasional meals
+            }
+        }
+        
+        // Run on page load if creating new student
+        document.addEventListener('DOMContentLoaded', function() {
+            const action = '{{ action }}';
+            if (action === 'create') {
+                updateDaysBasedOnType();
+            }
+        });
+    </script>
+</body>
+</html>
