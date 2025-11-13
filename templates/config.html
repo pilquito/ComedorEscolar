@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('index') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Configuración</li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6">
+                <i class="fas fa-cog me-2"></i>
+                Configuración del Sistema
+            </h1>
+            <p class="lead text-muted">
+                Herramientas de administración y mantenimiento
+            </p>
+        </div>
+    </div>
+
+    <!-- Configuration Cards -->
+    <div class="row">
+        <!-- Purge Day Tool -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-trash-alt fa-2x text-danger"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Purgar Día</h5>
+                            <p class="card-text text-muted">
+                                Elimina todos los datos de un día específico o de una clase concreta
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <form id="purgeForm">
+                        <div class="mb-3">
+                            <label for="purgeDate" class="form-label">Fecha a purgar</label>
+                            <input type="date" class="form-control" id="purgeDate" required>
+                            <div class="form-text">Selecciona el día del que quieres eliminar datos</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="purgeClass" class="form-label">Clase específica (opcional)</label>
+                            <select class="form-select" id="purgeClass">
+                                <option value="">Todas las clases</option>
+                                {% for clase in classes %}
+                                <option value="{{ clase.clase_id }}">{{ clase.nombre }} ({{ clase.clase_id }})</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Deja vacío para eliminar todas las clases del día</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-1"></i>
+                                Purgar Datos
+                            </button>
+                            <small class="text-danger">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Esta acción no se puede deshacer
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- More config tools can be added here -->
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-database fa-2x text-info"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Backup Base de Datos</h5>
+                            <p class="card-text text-muted">
+                                Próximamente: Crear copias de seguridad de la base de datos
+                            </p>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-info w-100" disabled>
+                        <i class="fas fa-download me-1"></i>
+                        Próximamente
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-file-import fa-2x text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Formatos Soportados</h5>
+                            <p class="card-text text-muted">
+                                Información sobre formatos de importación CSV
+                            </p>
+                        </div>
+                    </div>
+                    <div class="small">
+                        <strong>PARTEGEN:</strong> Múltiples clases<br>
+                        <strong>PARTEI4A:</strong> Clase única<br>
+                        <em>Codificación: ISO-8859-1</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <!-- Purge Students -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-graduate me-2"></i>
+                        Purgar Estudiantes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-users-slash fa-2x text-danger"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Eliminar Todos los Estudiantes</h5>
+                            <p class="card-text text-muted">
+                                Elimina permanentemente todos los estudiantes y sus registros
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-danger" onclick="confirmPurgeStudents()">
+                            <i class="fas fa-trash me-1"></i>
+                            Purgar Todos los Estudiantes
+                        </button>
+                        <small class="text-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Esta acción no se puede deshacer
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div id="alertContainer"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const purgeForm = document.getElementById('purgeForm');
+    const alertContainer = document.getElementById('alertContainer');
+
+    // Load classes for the dropdown
+    loadClasses();
+
+    purgeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const date = document.getElementById('purgeDate').value;
+        const claseId = document.getElementById('purgeClass').value;
+        
+        if (!date) {
+            showAlert('danger', 'Por favor selecciona una fecha');
+            return;
+        }
+
+        // Format date for display
+        const dateObj = new Date(date + 'T00:00:00');
+        const dateStr = dateObj.toLocaleDateString('es-ES', { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+        });
+        
+        const classInfo = claseId ? ` de la clase ${claseId}` : ' de todas las clases';
+        const confirmMessage = `¿Estás seguro de que quieres eliminar todos los datos del ${dateStr}${classInfo}?\n\nEsta acción no se puede deshacer.`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // Show loading state
+        const submitBtn = purgeForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Purgando...';
+        submitBtn.disabled = true;
+
+        // Make API call
+        fetch('/api/purge-day', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                date: date,
+                clase_id: claseId || null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', data.message);
+                purgeForm.reset();
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error de conexión: ' + error.message);
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+
+    function loadClasses() {
+        // This would typically load from an API, but for now we'll use the template data
+        // Classes are already loaded in the template
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        alertContainer.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // Purge students function
+    window.confirmPurgeStudents = function() {
+        if (confirm('¿Estás absolutamente seguro de que deseas eliminar TODOS los estudiantes? Esta acción NO se puede deshacer.')) {
+            if (confirm('Esta acción eliminará permanentemente todos los estudiantes y sus registros. ¿Continuar?')) {
+                purgeStudents();
+            }
+        }
+    }
+    
+    function purgeStudents() {
+        fetch('/config/purge-students', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', data.message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error de conexión: ' + error.message);
+        });
+    }
+});
+</script>
+{% endblock %}
