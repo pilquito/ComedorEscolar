@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Gestor de Profesores - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('index') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Profesores</li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6">
+                <i class="fas fa-chalkboard-teacher me-2"></i>
+                Gestor de Profesores
+            </h1>
+            <p class="lead text-muted">
+                Gestiona profesores y sus asignaciones de clase
+            </p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('teacher_new') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Nuevo Profesor
+            </a>
+        </div>
+    </div>
+
+    <!-- Teachers List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-1"></i>
+                        Lista de Profesores
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Usuario</th>
+                                    <th>Clases Asignadas</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for teacher in teachers %}
+                                <tr>
+                                    <td><strong>{{ teacher.teacher_id }}</strong></td>
+                                    <td>{{ teacher.nombre }} {{ teacher.apellidos }}</td>
+                                    <td>{{ teacher.username }}</td>
+                                    <td>
+                                        {% if teacher.assigned_classes %}
+                                            {% for clase_id in teacher.assigned_classes %}
+                                                <span class="badge bg-info me-1">{{ clase_id }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Sin asignar</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if teacher.active %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('teacher_edit', teacher_id=teacher.teacher_id) }}" 
+                                               class="btn btn-outline-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('teacher_assign_classes', teacher_id=teacher.teacher_id) }}" 
+                                               class="btn btn-outline-info" title="Asignar Clases">
+                                                <i class="fas fa-school"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('teacher_archive', teacher_id=teacher.teacher_id) }}" 
+                                                  class="d-inline" onsubmit="return confirm('¿Estás seguro de {{ 'archivar' if teacher.active else 'desarchivar' }} este profesor?')">
+                                                <button type="submit" class="btn btn-outline-{{ 'secondary' if teacher.active else 'success' }}" 
+                                                        title="{{ 'Archivar' if teacher.active else 'Desarchivar' }}">
+                                                    <i class="fas fa-{{ 'archive' if teacher.active else 'undo' }}"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('teacher_delete', teacher_id=teacher.teacher_id) }}" 
+                                                  class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar permanentemente este profesor? Esta acción no se puede deshacer.')">
+                                                <button type="submit" class="btn btn-outline-danger" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Teacher Modal -->
+<div class="modal fade" id="addTeacherModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo Profesor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addTeacherForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="teacherId" class="form-label">ID del Profesor</label>
+                        <input type="text" class="form-control" id="teacherId" required>
+                        <div class="form-text">Identificador único del profesor</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="username" required>
+                        <div class="form-text">Nombre de usuario para iniciar sesión</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="nombre" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="apellidos" class="form-label">Apellidos</label>
+                                <input type="text" class="form-control" id="apellidos" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="active" checked>
+                            <label class="form-check-label" for="active">
+                                Profesor activo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Crear Profesor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Classes Modal -->
+<div class="modal fade" id="assignClassesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Asignar Clases</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignTeacherId">
+                <p>Selecciona las clases que deseas asignar al profesor:</p>
+                
+                <div id="classAssignmentList">
+                    {% for clase in classes %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input class-checkbox" type="checkbox" 
+                               id="class_{{ clase.clase_id }}" value="{{ clase.clase_id }}">
+                        <label class="form-check-label" for="class_{{ clase.clase_id }}">
+                            <strong>{{ clase.clase_id }}</strong> - {{ clase.nombre }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveClassAssignments()">
+                    <i class="fas fa-save me-1"></i>
+                    Guardar Asignaciones
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Teachers management functions
+function editTeacher(teacherId) {
+    // TODO: Implement teacher editing
+    alert('Función de edición por implementar');
+}
+
+function assignClasses(teacherId) {
+    document.getElementById('assignTeacherId').value = teacherId;
+    
+    // Clear all checkboxes first
+    document.querySelectorAll('.class-checkbox').forEach(cb => cb.checked = false);
+    
+    // Check current assigned classes
+    const teacherRow = document.querySelector(`tr:has(td:first-child:contains('${teacherId}'))`);
+    if (teacherRow) {
+        const assignedBadges = teacherRow.querySelectorAll('.badge.bg-info');
+        assignedBadges.forEach(badge => {
+            const claseId = badge.textContent.trim();
+            const checkbox = document.getElementById(`class_${claseId}`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('assignClassesModal'));
+    modal.show();
+}
+
+function saveClassAssignments() {
+    const teacherId = document.getElementById('assignTeacherId').value;
+    const checkedBoxes = document.querySelectorAll('.class-checkbox:checked');
+    const selectedClasses = Array.from(checkedBoxes).map(cb => cb.value);
+    
+    // TODO: Implement API call to save assignments
+    console.log('Assigning classes', selectedClasses, 'to teacher', teacherId);
+    
+    // Close modal and refresh page for now
+    bootstrap.Modal.getInstance(document.getElementById('assignClassesModal')).hide();
+    location.reload();
+}
+
+// Add teacher form handler
+document.getElementById('addTeacherForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        teacher_id: document.getElementById('teacherId').value,
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        nombre: document.getElementById('nombre').value,
+        apellidos: document.getElementById('apellidos').value,
+        active: document.getElementById('active').checked
+    };
+    
+    // TODO: Implement API call to create teacher
+    console.log('Creating teacher:', formData);
+    
+    // Close modal and refresh page for now
+    bootstrap.Modal.getInstance(document.getElementById('addTeacherModal')).hide();
+    location.reload();
+});
+</script>
+{% endblock %}
