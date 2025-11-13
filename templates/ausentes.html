@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Estudiantes Ausentes - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6">
+                <i class="fas fa-user-times me-2 text-danger"></i>
+                Estudiantes Ausentes
+            </h1>
+            <p class="lead text-muted">
+                {{ meal_date|spanish_date }}
+                {% if class_info %}
+                - Clase: {{ class_info.nombre }}
+                {% endif %}
+            </p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-times fa-3x text-danger mb-3"></i>
+                    <h3 class="mb-1">{{ total_absent }}</h3>
+                    <p class="text-muted mb-0">
+                        {% if total_absent == 1 %}
+                        Estudiante Ausente
+                        {% else %}
+                        Estudiantes Ausentes
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Absent Students List -->
+    {% if absent_students %}
+        {% if class_info %}
+            <!-- Single Class View -->
+            <div class="row">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-school me-2"></i>
+                                {{ class_info.nombre }}
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Estudiante</th>
+                                            <th>Tipo Comida</th>
+                                            <th>Programado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in absent_students %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-user-circle fa-lg text-muted me-2"></i>
+                                                    <div>
+                                                        <strong>{{ student.apellidos }}, {{ student.nombre }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">ID: {{ student.student_id }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ student.meal_type }}</span>
+                                            </td>
+                                            <td>
+                                                {% if student.eats_today %}
+                                                    <span class="badge bg-success">Sí</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">No</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Multiple Classes View -->
+            {% for class_name, students in students_by_class.items() %}
+            <div class="row mb-4">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-school me-2"></i>
+                                {{ class_name }}
+                                <span class="badge bg-danger ms-2">{{ students|length }} ausentes</span>
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Estudiante</th>
+                                            <th>Tipo Comida</th>
+                                            <th>Programado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in students %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-user-circle fa-lg text-muted me-2"></i>
+                                                    <div>
+                                                        <strong>{{ student.apellidos }}, {{ student.nombre }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">ID: {{ student.student_id }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ student.meal_type }}</span>
+                                            </td>
+                                            <td>
+                                                {% if student.eats_today %}
+                                                    <span class="badge bg-success">Sí</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">No</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% else %}
+        <!-- No Absent Students -->
+        <div class="row">
+            <div class="col">
+                <div class="alert alert-success text-center" role="alert">
+                    <i class="fas fa-check-circle fa-3x mb-3"></i>
+                    <h4>¡Excelente!</h4>
+                    <p class="mb-0">
+                        No hay estudiantes ausentes para 
+                        {% if class_info %}
+                        la clase {{ class_info.nombre }} el día {{ meal_date|spanish_date }}
+                        {% else %}
+                        el día {{ meal_date|spanish_date }}
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any specific JavaScript functionality for the absent students page
+    console.log('Absent students page loaded');
+});
+</script>
+{% endblock %}
