@@ -14,6 +14,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar primero solo los archivos de dependencias para aprovechar cache de Docker
@@ -29,15 +31,16 @@ COPY . /app/
 # Crear directorio para la base de datos SQLite si no existe
 RUN mkdir -p /app/data
 
-# Hacer ejecutable el script de inicio
-RUN chmod +x /app/start.sh
+# Hacer ejecutable el script de inicio y convertir a formato Unix
+RUN chmod +x /app/start.sh && \
+    sed -i 's/\r$//' /app/start.sh
 
 # Exponer el puerto
 EXPOSE 5000
 
-# Healthcheck simple (sin requests que puede no estar instalado)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/login', timeout=5)" || exit 1
+# Healthcheck simple - espera más tiempo para que la app inicie
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/login || wget -q --spider http://localhost:5000/login || exit 1
 
 # Comando para ejecutar la aplicación usando el script de inicio
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]
