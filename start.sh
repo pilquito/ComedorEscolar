@@ -36,18 +36,8 @@ echo "   - Timeout: ${TIMEOUT:-120}s"
 echo "   - Timezone: ${TZ:-Europe/Madrid}"
 echo ""
 
-# Inicializar base de datos si no existe
-if [ ! -f "${DATABASE_PATH:-/app/data/cafeteria.db}" ]; then
-    echo "🗄️  Base de datos no encontrada. Inicializando..."
-    python -c "from database import init_db; init_db()"
-    echo "✅ Base de datos inicializada"
-else
-    echo "✅ Base de datos existente encontrada"
-fi
-
-# Verificar integridad de la base de datos
-echo "🔍 Verificando integridad de la base de datos..."
-python -c "from database import verify_database_integrity; verify_database_integrity()"
+# La base de datos se inicializará automáticamente cuando Flask arranque
+echo "✅ Flask inicializará la base de datos automáticamente"
 
 echo ""
 echo "========================================="
@@ -56,6 +46,7 @@ echo "========================================="
 echo ""
 
 # Ejecutar Gunicorn con configuración
+# NOTA: Removemos --preload para que cada worker inicialice la BD independientemente
 exec gunicorn \
     --bind 0.0.0.0:${PORT:-5000} \
     --workers ${WORKERS:-4} \
@@ -64,5 +55,4 @@ exec gunicorn \
     --access-logfile - \
     --error-logfile - \
     --log-level info \
-    --preload \
     main:app
