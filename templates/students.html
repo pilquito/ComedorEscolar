@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Gestor de Alumnos - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('index') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Alumnos</li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6">
+                <i class="fas fa-user-graduate me-2"></i>
+                Gestor de Alumnos
+            </h1>
+            <p class="lead text-muted">
+                Gestiona alumnos y sus tipos de comida
+            </p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Filtros</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="classFilter" class="form-label">Filtrar por Clase</label>
+                            <select class="form-select" id="classFilter" onchange="filterByClass()">
+                                <option value="">Todas las clases</option>
+                                {% for clase in classes %}
+                                <option value="{{ clase.clase_id }}" 
+                                        {% if selected_class == clase.clase_id %}selected{% endif %}>
+                                    {{ clase.nombre }} ({{ clase.clase_id }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-outline-secondary me-2" onclick="clearFilters()">
+                                <i class="fas fa-times me-1"></i>
+                                Limpiar
+                            </button>
+                            <button class="btn btn-success" onclick="exportFiltered()">
+                                <i class="fas fa-download me-1"></i>
+                                Exportar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Estadísticas</h6>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <strong>{{ students|length }}</strong><br>
+                            <small>Total</small>
+                        </div>
+                        <div class="col-4">
+                            <strong>{{ students|selectattr('activo')|list|length }}</strong><br>
+                            <small>Activos</small>
+                        </div>
+                        <div class="col-4">
+                            <strong>{{ students|selectattr('viene_hoy')|list|length }}</strong><br>
+                            <small>Comen hoy</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-1"></i>
+                        Lista de Alumnos
+                        {% if selected_class %}
+                        <span class="badge bg-info ms-2">Clase: {{ selected_class }}</span>
+                        {% endif %}
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('student_new') }}" class="btn btn-sm btn-primary me-2">
+                            <i class="fas fa-plus me-1"></i>
+                            Nuevo Estudiante
+                        </a>
+                        <button class="btn btn-sm btn-secondary" onclick="bulkEdit()">
+                            <i class="fas fa-edit me-1"></i>
+                            Edición Masiva
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm" id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAll" onchange="toggleAll()">
+                                    </th>
+                                    <th>ID</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Clase</th>
+                                    <th>Tipo Comensal</th>
+                                    <th>Come Hoy</th>
+                                    <th>Estado</th>
+                                    <th>Alergias</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="student-checkbox" value="{{ student.student_id }}">
+                                    </td>
+                                    <td><strong>{{ student.student_id }}</strong></td>
+                                    <td>{{ student.apellidos }}, {{ student.nombre }}</td>
+                                    <td><span class="badge bg-secondary">{{ student.clase_id }}</span></td>
+                                    <td>
+                                        {% if student.tipo_comensal == 'FIJO' %}
+                                            <span class="badge bg-success">Fijo</span>
+                                        {% elif student.tipo_comensal == 'FIJO_DISCONTINUO' %}
+                                            <span class="badge bg-info">Discontinuo</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Extra</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if student.viene_hoy %}
+                                            <span class="text-success"><i class="fas fa-check"></i> Sí</span>
+                                        {% else %}
+                                            <span class="text-muted"><i class="fas fa-times"></i> No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if student.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if student.alergias %}
+                                            <span class="badge bg-danger" title="{{ student.alergias }}">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('student_edit', student_id=student.student_id) }}" 
+                                               class="btn btn-outline-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('student_archive', student_id=student.student_id) }}" 
+                                                  class="d-inline" onsubmit="return confirm('¿Estás seguro de {{ 'archivar' if student.activo else 'desarchivar' }} este estudiante?')">
+                                                <button type="submit" class="btn btn-outline-{{ 'secondary' if student.activo else 'success' }}" 
+                                                        title="{{ 'Archivar' if student.activo else 'Desarchivar' }}">
+                                                    <i class="fas fa-{{ 'archive' if student.activo else 'undo' }}"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('student_delete', student_id=student.student_id) }}" 
+                                                  class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar permanentemente este estudiante? Esta acción no se puede deshacer.')">
+                                                <button type="submit" class="btn btn-outline-danger" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterByClass() {
+    const classFilter = document.getElementById('classFilter').value;
+    if (classFilter) {
+        window.location.href = `{{ url_for('students') }}?clase=${classFilter}`;
+    } else {
+        window.location.href = `{{ url_for('students') }}`;
+    }
+}
+
+function clearFilters() {
+    window.location.href = `{{ url_for('students') }}`;
+}
+
+function exportFiltered() {
+    const selectedClass = '{{ selected_class or "" }}';
+    let exportUrl = '{{ url_for("api_export_csv") }}';
+    if (selectedClass) {
+        exportUrl += `?clase=${selectedClass}`;
+    }
+    window.open(exportUrl, '_blank');
+}
+
+function toggleAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+}
+
+function editStudent(studentId) {
+    // TODO: Implement student editing modal
+    alert(`Editar alumno: ${studentId}`);
+}
+
+function bulkEdit() {
+    const selected = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Selecciona al menos un alumno para editar');
+        return;
+    }
+    
+    // TODO: Implement bulk edit modal
+    alert(`Editar ${selected.length} alumnos seleccionados`);
+}
+</script>
+{% endblock %}
