@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar archivo de dependencias
-COPY docker-requirements.txt /app/requirements.txt
+# Copiar primero solo los archivos de dependencias para aprovechar cache de Docker
+COPY requirements.txt docker-requirements.txt* /app/
 
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -35,9 +35,9 @@ RUN chmod +x /app/start.sh
 # Exponer el puerto
 EXPOSE 5000
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/login', timeout=5)"
+# Healthcheck simple (sin requests que puede no estar instalado)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/login', timeout=5)" || exit 1
 
 # Comando para ejecutar la aplicación usando el script de inicio
 CMD ["/app/start.sh"]
