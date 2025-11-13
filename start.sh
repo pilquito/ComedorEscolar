@@ -36,17 +36,29 @@ echo "   - Timeout: ${TIMEOUT:-120}s"
 echo "   - Timezone: ${TZ:-Europe/Madrid}"
 echo ""
 
-# La base de datos se inicializará automáticamente cuando Flask arranque
-echo "✅ Flask inicializará la base de datos automáticamente"
+# Verificar permisos del directorio de datos
+echo "Verificando permisos de /app/data..."
+ls -la /app/data || echo "Directorio no existe, se creara"
+touch /app/data/test.txt && rm /app/data/test.txt && echo "✅ Permisos OK" || echo "❌ Sin permisos de escritura"
+
+# Test rápido de importación
+echo "Verificando que Python puede importar la app..."
+python3 -c "import sys; print('Python version:', sys.version)" || exit 1
+python3 -c "from app import app; print('✅ App importada correctamente')" || {
+    echo "❌ ERROR: No se puede importar la app"
+    python3 -c "from app import app" 2>&1
+    exit 1
+}
 
 echo ""
 echo "========================================="
 echo "🚀 Iniciando servidor con Gunicorn..."
 echo "========================================="
+echo "Bind: 0.0.0.0:${PORT:-5000}"
+echo "Workers: ${WORKERS:-4}"
 echo ""
 
-# Ejecutar Gunicorn con configuración
-# NOTA: Removemos --preload para que cada worker inicialice la BD independientemente
+# Ejecutar Gunicorn con configuración verbose
 exec gunicorn \
     --bind 0.0.0.0:${PORT:-5000} \
     --workers ${WORKERS:-4} \
@@ -54,5 +66,6 @@ exec gunicorn \
     --timeout ${TIMEOUT:-120} \
     --access-logfile - \
     --error-logfile - \
-    --log-level info \
+    --log-level debug \
+    --capture-output \
     main:app
