@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6">
+                <i class="fas fa-chart-bar me-2"></i>
+                Dashboard del Comedor
+            </h1>
+            <div>
+                <p class="lead text-muted mb-3">{{ today|spanish_date }}</p>
+                
+                <!-- Date Navigation Controls -->
+                <div class="d-flex flex-wrap gap-1 justify-content-start justify-content-md-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="changeDate(-1)">
+                        <i class="fas fa-chevron-left"></i> <span class="d-none d-sm-inline">Anterior</span>
+                    </button>
+                    <input type="date" id="dateSelector" class="form-control form-control-sm" value="{{ today }}" 
+                           onchange="goToDate(this.value)" style="width: 140px;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="changeDate(1)">
+                        <span class="d-none d-sm-inline">Siguiente</span> <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="goToToday()">
+                        <i class="fas fa-calendar-day"></i> <span class="d-none d-sm-inline">Hoy</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import/Export Section - Always visible -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-import me-2"></i>
+                        Importar/Exportar Datos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Importar CSV</h6>
+                            <p class="text-muted small">Importa datos de alumnos desde archivo</p>
+                            <form id="importForm" enctype="multipart/form-data">
+                                <div class="input-group mb-2">
+                                    <input type="file" class="form-control" id="csvFile" name="file" accept=".csv" required>
+                                    <button type="submit" class="btn btn-outline-primary">
+                                        <i class="fas fa-upload me-1"></i>
+                                        Importar
+                                    </button>
+                                </div>
+                            </form>
+                            <div id="importStatus"></div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>Exportar CSV</h6>
+                            <p class="text-muted small">Descarga el estado actual de asistencia</p>
+                            {% if not no_data %}
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="{{ url_for('api_export_csv') }}" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-download me-1"></i>
+                                    Reporte
+                                </a>
+                                <button onclick="exportOriginalFormat()" class="btn btn-outline-primary btn-sm" id="exportOriginalBtn">
+                                    <i class="fas fa-file-export me-1"></i>
+                                    Formato Original
+                                </button>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                <strong>Formato Original:</strong> Solo si 100% validado
+                            </small>
+                            {% else %}
+                            <button class="btn btn-outline-secondary" disabled>
+                                <i class="fas fa-download me-1"></i>
+                                Sin datos para exportar
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Show message if no data -->
+    {% if no_data %}
+    <div class="row">
+        <div class="col">
+            <div class="alert alert-info text-center" role="alert">
+                <i class="fas fa-info-circle fa-3x mb-3"></i>
+                <h4>{{ message }}</h4>
+                <p class="mb-0">Usa el importador de arriba para cargar datos del día actual</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-users fa-2x text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Total Alumnos</h5>
+                            <h3 class="mb-0">{{ total_students }}</h3>
+                            <small class="text-muted">Alumnos activos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-utensils fa-2x text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Comen Hoy</h5>
+                            <h3 class="mb-0">{{ total_eating_today }}</h3>
+                            <small class="text-muted">Alumnos programados</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Confirmados</h5>
+                            {% if total_confirmed > 0 %}
+                                <h3 class="mb-0">
+                                    <a href="{{ url_for('confirmados', meal_date=today) }}" class="text-decoration-none text-success">
+                                        {{ total_confirmed }}
+                                    </a>
+                                </h3>
+                            {% else %}
+                                <h3 class="mb-0">{{ total_confirmed }}</h3>
+                            {% endif %}
+                            <small class="text-muted">Presentes validados</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-times-circle fa-2x text-danger"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Ausentes</h5>
+                            {% if total_absent > 0 %}
+                                <h3 class="mb-0">
+                                    <a href="{{ url_for('ausentes', meal_date=today) }}" class="text-decoration-none text-danger">
+                                        {{ total_absent }}
+                                    </a>
+                                </h3>
+                            {% else %}
+                                <h3 class="mb-0">{{ total_absent }}</h3>
+                            {% endif %}
+                            <small class="text-muted">No han venido</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-question-circle fa-2x text-secondary"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">Sin Validar</h5>
+                            {% if total_pending > 0 %}
+                                <h3 class="mb-0">
+                                    <a href="{{ url_for('pendientes', meal_date=today) }}" class="text-decoration-none text-secondary">
+                                        {{ total_pending }}
+                                    </a>
+                                </h3>
+                            {% else %}
+                                <h3 class="mb-0">{{ total_pending }}</h3>
+                            {% endif %}
+                            <small class="text-muted">Pendientes</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-percentage fa-2x text-info"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="card-title mb-1">% Validado</h5>
+                            {% set validation_rate = ((total_confirmed + total_absent) / total_students * 100) if total_students > 0 else 0 %}
+                            <h3 class="mb-0">{{ "%.0f"|format(validation_rate) }}%</h3>
+                            <small class="text-muted">Del total importado</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Classes List -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-school me-2"></i>
+                        Clases
+                    </h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Actualizar
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if classes %}
+                        <div class="row">
+                            {% for class in classes %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card class-summary-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title mb-0">{{ class.nombre }}</h6>
+                                            {% set conf_status = class.confirmation_status %}
+                                            {% set conf_rate = ((conf_status.confirmed + conf_status.absent) / conf_status.total * 100) if conf_status.total > 0 else 100 %}
+                                            {% if conf_rate == 100 and conf_status.total > 0 %}
+                                                <span class="badge bg-success">Validado</span>
+                                            {% elif conf_rate > 0 %}
+                                                <span class="badge bg-warning">{{ "%.0f"|format(conf_rate) }}%</span>
+                                            {% elif conf_status.total > 0 %}
+                                                <span class="badge bg-secondary">Sin validar</span>
+                                            {% else %}
+                                                <span class="badge bg-light text-muted">Sin comensales</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">{{ class.total_students }} alumnos</span>
+                                            <span class="badge bg-info">{{ class.students_eating_today }} programados</span>
+                                        </div>
+                                        
+                                        {% if conf_status.total > 0 %}
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small>
+                                                {% if conf_status.confirmed > 0 %}
+                                                    <span class="badge badge-sm bg-success">{{ conf_status.confirmed }} ✓</span>
+                                                {% endif %}
+                                                {% if conf_status.absent > 0 %}
+                                                    <a href="{{ url_for('ausentes', meal_date=today, clase_id=class.clase_id) }}" class="text-decoration-none">
+                                                        <span class="badge badge-sm bg-danger">{{ conf_status.absent }} ✗</span>
+                                                    </a>
+                                                {% endif %}
+                                                {% if conf_status.pending > 0 %}
+                                                    <span class="badge badge-sm bg-secondary">{{ conf_status.pending }} ?</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        
+                                        <!-- Validation Progress Bar -->
+                                        <div class="progress mb-2" style="height: 6px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {{ (conf_status.confirmed / conf_status.total * 100) if conf_status.total > 0 else 0 }}%" 
+                                                 title="Confirmados"></div>
+                                            <div class="progress-bar bg-danger" role="progressbar" 
+                                                 style="width: {{ (conf_status.absent / conf_status.total * 100) if conf_status.total > 0 else 0 }}%" 
+                                                 title="Ausentes"></div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="d-grid gap-2">
+                                            <a href="{{ url_for('class_detail', clase_id=class.clase_id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i>
+                                                Ver Detalle
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-school fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay clases registradas</h5>
+                            <p class="text-muted">Importa datos desde un archivo CSV para comenzar.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Export in original PARTEGEN format
+function exportOriginalFormat() {
+    const button = document.getElementById('exportOriginalBtn');
+    CafeteriaApp.setButtonLoading(button, true);
+    
+    fetch('/api/export_original?date={{ today }}')
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Error en la exportación');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'PARTGEN.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            CafeteriaApp.showToast('Archivo exportado correctamente', 'success');
+        })
+        .catch(error => {
+            CafeteriaApp.showToast(error.message, 'danger');
+        })
+        .finally(() => {
+            CafeteriaApp.setButtonLoading(button, false);
+        });
+}
+
+// Handle CSV import
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle CSV import
+    const importForm = document.getElementById('importForm');
+    const importStatus = document.getElementById('importStatus');
+    
+    if (!importForm || !importStatus) {
+        console.log('Import form or status element not found');
+        return;
+    }
+    
+    importForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(importForm);
+        const submitBtn = importForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Importando...';
+        submitBtn.disabled = true;
+        importStatus.innerHTML = '';
+        
+        fetch('/api/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                importStatus.innerHTML = `<div class="alert alert-danger mt-2"><small>${data.error}</small></div>`;
+            } else {
+                importStatus.innerHTML = `<div class="alert alert-success mt-2"><small>${data.message}</small></div>`;
+                if (data.errors && data.errors.length > 0) {
+                    importStatus.innerHTML += `<div class="alert alert-warning mt-2"><small>Errores: ${data.errors.join(', ')}</small></div>`;
+                }
+                // Reload page after successful import
+                setTimeout(() => location.reload(), 2000);
+            }
+        })
+        .catch(error => {
+            importStatus.innerHTML = `<div class="alert alert-danger mt-2"><small>Error: ${error.message}</small></div>`;
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+});
+
+// Date navigation functions
+function goToDate(selectedDate) {
+    if (selectedDate) {
+        window.location.href = `/dashboard/${selectedDate}`;
+    }
+}
+
+function changeDate(days) {
+    const currentDate = new Date(document.getElementById('dateSelector').value);
+    currentDate.setDate(currentDate.getDate() + days);
+    const newDateStr = currentDate.toISOString().split('T')[0];
+    goToDate(newDateStr);
+}
+
+function goToToday() {
+    const today = new Date().toISOString().split('T')[0];
+    goToDate(today);
+}
+</script>
+{% endblock %}
