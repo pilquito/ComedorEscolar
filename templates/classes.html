@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Gestor de Clases - Comedor Escolar{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('index') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Clases</li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6">
+                <i class="fas fa-school me-2"></i>
+                Gestor de Clases
+            </h1>
+            <p class="lead text-muted">
+                Gestiona clases, alumnos y profesores asignados
+            </p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClassModal">
+                <i class="fas fa-plus me-1"></i>
+                Nueva Clase
+            </button>
+        </div>
+    </div>
+
+    <!-- Classes Cards -->
+    <div class="row">
+        {% for clase in classes %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title mb-1">{{ clase.nombre }}</h5>
+                            <p class="card-text text-muted">ID: {{ clase.clase_id }}</p>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                    type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('class_detail', clase_id=clase.clase_id) }}">
+                                        <i class="fas fa-eye me-1"></i> Ver Detalle
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('students') }}?clase={{ clase.clase_id }}">
+                                        <i class="fas fa-user-graduate me-1"></i> Ver Alumnos
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="#" onclick="editClass('{{ clase.clase_id }}')">
+                                        <i class="fas fa-edit me-1"></i> Editar
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-primary">{{ clase.student_count }}</div>
+                                <small class="text-muted">Total Alumnos</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-success">{{ clase.active_students }}</div>
+                                <small class="text-muted">Activos</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    {% if clase.student_count > 0 %}
+                    <div class="progress mb-3" style="height: 8px;">
+                        {% set active_percentage = (clase.active_students / clase.student_count * 100) %}
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ active_percentage }}%" 
+                             title="{{ active_percentage|round }}% activos">
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Quick Actions -->
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('daily_meals', meal_date=today) }}#{{ clase.clase_id }}" 
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-utensils me-1"></i>
+                            Comensales Hoy
+                        </a>
+                    </div>
+                    
+                    <!-- Creation date -->
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>
+                            Creada: {{ moment(clase.created_at).format('DD/MM/YYYY') if clase.created_at else 'N/A' }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not classes %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-school fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay clases registradas</h4>
+                <p class="text-muted">Crea la primera clase para empezar</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClassModal">
+                    <i class="fas fa-plus me-1"></i>
+                    Crear Primera Clase
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Class Modal -->
+<div class="modal fade" id="addClassModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva Clase</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addClassForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="claseId" class="form-label">ID de la Clase</label>
+                        <input type="text" class="form-control" id="claseId" required 
+                               placeholder="Ej: 4A, 5B, 1ESO-A">
+                        <div class="form-text">Identificador único de la clase (ej: 4A, 1ESO-B)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="className" class="form-label">Nombre de la Clase</label>
+                        <input type="text" class="form-control" id="className" required 
+                               placeholder="Ej: Cuarto A, Primero ESO Grupo B">
+                        <div class="form-text">Nombre descriptivo de la clase</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>Tip:</strong> Una vez creada la clase, podrás asignar alumnos y profesores desde sus respectivos gestores.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Crear Clase
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Class Modal -->
+<div class="modal fade" id="editClassModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Clase</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editClassForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editClaseId">
+                    
+                    <div class="mb-3">
+                        <label for="editClassName" class="form-label">Nombre de la Clase</label>
+                        <input type="text" class="form-control" id="editClassName" required>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        <strong>Atención:</strong> El ID de la clase no se puede cambiar una vez creada.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add class form handler
+document.getElementById('addClassForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        clase_id: document.getElementById('claseId').value.trim().toUpperCase(),
+        nombre: document.getElementById('className').value.trim()
+    };
+    
+    if (!formData.clase_id || !formData.nombre) {
+        alert('Todos los campos son obligatorios');
+        return;
+    }
+    
+    // TODO: Implement API call to create class
+    console.log('Creating class:', formData);
+    
+    // Close modal and refresh page for now
+    bootstrap.Modal.getInstance(document.getElementById('addClassModal')).hide();
+    location.reload();
+});
+
+// Edit class function
+function editClass(claseId) {
+    // TODO: Load class data and show edit modal
+    document.getElementById('editClaseId').value = claseId;
+    
+    // Find current class name
+    const classCard = document.querySelector(`[onclick="editClass('${claseId}')"]`).closest('.card');
+    const currentName = classCard.querySelector('.card-title').textContent.trim();
+    document.getElementById('editClassName').value = currentName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('editClassModal'));
+    modal.show();
+}
+
+// Edit class form handler
+document.getElementById('editClassForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        clase_id: document.getElementById('editClaseId').value,
+        nombre: document.getElementById('editClassName').value.trim()
+    };
+    
+    // TODO: Implement API call to update class
+    console.log('Updating class:', formData);
+    
+    // Close modal and refresh page for now
+    bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
+    location.reload();
+});
+</script>
+{% endblock %}
